@@ -1,0 +1,22 @@
+OFFSET TARGET ARRAY:
+  zeroSep_cov: False
+  num_offsets: 1
+  offset_step: 8
+  include_temp0: False
+  minus_negativeTemp: True
+  separate_pos_neg_offsets: True
+  map_axis: x and y
+  mapping_type: mean
+  roi_belowGround: 6
+  roi_envelope: 6
+
+FITTING ALGORITHM:
+  type: l3s
+  print_fitting: True
+  delta_xSep: [0, 0, 0]
+  delta_ySep: [0, 0, 0]
+  fit_layer_alt: False
+  fit_deltaXYseps: True
+
+
+
