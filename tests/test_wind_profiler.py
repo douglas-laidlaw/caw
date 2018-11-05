@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     pyplot.figure('analytical fit')
     pyplot.imshow(results.wind_fit.covMapOffset)
-    pyplot.figure('msured')
+    pyplot.figure('measured')
     pyplot.imshow(results.roi_offsets[0])
 
 
