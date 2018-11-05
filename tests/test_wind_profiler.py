@@ -32,8 +32,10 @@ if __name__ == '__main__':
 
     pyplot.figure('analytical fit')
     pyplot.imshow(results.wind_fit.covMapOffset)
-    pyplot.figure('measured')
+    pyplot.figure('msured')
     pyplot.imshow(results.roi_offsets[0])
+
+
 
 
     # """FIT TURBULENCE PROFILE"""
