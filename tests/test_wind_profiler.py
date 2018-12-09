@@ -25,7 +25,6 @@ if __name__ == '__main__':
     air_mass = 1.
     frame_rate = 150.
     frame_count = numpy.arange(10000)
-    frame_count[8] = 30
     pix_arc = numpy.nan
     shwfs_centroids = fits.getdata('test_fits/canary_noNoise_it10k_nl3_h0a10a20km_r00p1_L025_ws10a15a20_wd260a80a350_infScrn_wss448_gsPos0cn40a0c0a30c0.fits')
     tas = numpy.array([[0., -40.], [0., 0.], [30., 0.]])
