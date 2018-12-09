@@ -2,7 +2,7 @@ OFFSET TARGET ARRAY:
   roi_via_matrix: True
   zeroSep_cov: False
   num_offsets: 1
-  input_frame_count: False
+  input_frame_count: True
   offset_step: 8
   include_temp0: False
   minus_negativeTemp: True

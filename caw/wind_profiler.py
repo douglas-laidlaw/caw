@@ -168,10 +168,9 @@ class wind_profiler(object):
             if frame_count.shape[0]!=self.shwfs_centroids.shape[0]:
                 raise Exception('Input frame count not the same length as SHWFS iterations.')
             self.shwfs_centroids = self.shwfs_centroids[numpy.argsort(frame_count)]
-            frame_count = numpy.argsort(frame_count)
-
+            frame_count = frame_count[numpy.argsort(frame_count)]
             nearest = numpy.abs(frame_count-self.temporal_step).argmin()
-            self.temporal_step = nearest
+            self.temporal_step = numpy.where(frame_count==nearest)[0][0]
 
         start_calc = time.time()
         self.roi_offsets = self.temporal_offset_roi()
