@@ -4,6 +4,7 @@ import numpy
 from astropy.io import fits
 from esoTurbProfile import esoTurbProfile
 from matplotlib import pyplot; pyplot.ion()
+import capt.misc_functions.matplotlib_format
 
 
 def get_turb_profile(turb_conf, air_mass, tas, pix_arc, shwfs_centroids, input_matrix=False):
@@ -34,14 +35,3 @@ if __name__ == '__main__':
     pyplot.imshow(results.wind_fit.covMapOffset)
     pyplot.figure('measured')
     pyplot.imshow(results.roi_offsets[0])
-
-
-
-
-    # """FIT TURBULENCE PROFILE"""
-    # air_mass = 1.
-    # pix_arc = numpy.nan
-    # shwfs_centroids = fits.getdata('test_fits/canary_noNoise_it10k_nl3_h0kma10kma20km_r00p1_L025_wd270a90a0_ws10a10a10_infScrn_wss448_gsPos0cn40a0c0a30c0.fits')
-    # tas = numpy.array([[0., -40.], [0., 0.], [30., 0.]])
-    # turb_conf = capt.configuration('../conf/turb_conf.yaml')
-    # results = get_turb_profile(turb_conf, air_mass, tas, pix_arc, shwfs_centroids)

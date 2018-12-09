@@ -34,6 +34,7 @@ class configuration(object):
         fit_params = self.configDict["FITTING ALGORITHM"]
         delta_xSep = numpy.array(fit_params["delta_xSep"])
         delta_ySep = numpy.array(fit_params["delta_ySep"])
+        
         #raise exception if specified layer parameters do not match.
         if len(delta_xSep)!=len(delta_ySep):
             raise Exception('Check lengths of wind parameters.')
@@ -42,6 +43,10 @@ class configuration(object):
     def loadYaml(self, yaml_file):
         with open(yaml_file) as _file:
             self.configDict = yaml.load(_file)
+
+
+
+
 
 
 class wind_profiler(object):
@@ -59,6 +64,7 @@ class wind_profiler(object):
         self.tel_diam = self.turb_results.tel_diam
         self.n_wfs = self.turb_results.n_wfs
         self.n_subap = self.turb_results.n_subap
+        self.n_subap_from_pupilMask = turb_results.n_subap_from_pupilMask
         self.nx_subap = self.turb_results.nx_subap
         self.pupil_mask = self.turb_results.pupil_mask
         self.shwfs_centroids = self.turb_results.shwfs_centroids
@@ -75,7 +81,9 @@ class wind_profiler(object):
         self.shwfs_rot = self.turb_results.shwfs_rot
     
         target_conf = wind_config_file.configDict["OFFSET TARGET ARRAY"]
+        self.roi_via_matrix = target_conf["roi_via_matrix"]
         self.zeroSep_cov = target_conf["zeroSep_cov"]
+        self.input_frame_count = target_conf["input_frame_count"]
         self.num_offsets = target_conf["num_offsets"]
         self.offset_step = target_conf["offset_step"]
         self.temporal_step = numpy.round(float(self.offset_step)/float(self.num_offsets)).astype('int')
@@ -93,17 +101,16 @@ class wind_profiler(object):
         if len(self.delta_xSep)!=self.n_layer:
             raise Exception('Check length of wind parameters with n_layer.')
 
+
+
         fit_conf = wind_config_file.configDict["FITTING ALGORITHM"]
         self.fitting_type = fit_conf["type"]
         self.fit_layer_alt = fit_conf["fit_layer_alt"]
         self.fit_deltaXYseps = fit_conf["fit_deltaXYseps"]
         self.print_fiting = fit_conf["print_fitting"]
- 
-
 
         self.onesMat, self.wfsMat_1, self.wfsMat_2, self.allMapPos, self.selector, self.xy_separations = roi_referenceArrays(
                 self.pupil_mask, self.gs_pos, self.tel_diam, self.wind_roi_belowGround, self.wind_roi_envelope)
-
         
         if self.zeroSep_cov==False:
             roi_width = (2*self.wind_roi_envelope) + 1
@@ -134,7 +141,7 @@ class wind_profiler(object):
             if self.turb_results.l3s_fit==True:
                 self.l3s1_matrix = self.turb_results.l3s1_matrix
             else:
-                self.l3s1_matrix = transform_matrix(self.n_subap, self.n_wfs)
+                self.l3s1_matrix = transform_matrix(self.n_subap_from_pupilMask, self.n_wfs)
 
 
         if self.turb_results.covariance_map==True or self.turb_results.covariance_map_roi==True:
@@ -142,7 +149,7 @@ class wind_profiler(object):
             self.mmc = self.turb_results.mmc
             self.md = self.turb_results.md
         else:
-            matrix_region_ones = numpy.ones((self.n_subap[0], self.n_subap[0]))
+            matrix_region_ones = numpy.ones((self.n_subap_from_pupilMask[0], self.n_subap_from_pupilMask[0]))
             self.mm, self.mmc, self.md = get_mappingMatrix(self.pupil_mask, matrix_region_ones)
 
 
@@ -152,7 +159,19 @@ class wind_profiler(object):
 
 
 
-    def perform_wind_profiling(self, frame_rate):
+
+
+
+    def perform_wind_profiling(self, frame_rate, frame_count=False):
+
+        if self.input_frame_count==True:
+            if frame_count.shape[0]!=self.shwfs_centroids.shape[0]:
+                raise Exception('Input frame count not the same length as SHWFS iterations.')
+            self.shwfs_centroids = self.shwfs_centroids[numpy.argsort(frame_count)]
+            frame_count = numpy.argsort(frame_count)
+
+            nearest = numpy.abs(frame_count-self.temporal_step).argmin()
+            self.temporal_step = nearest
 
         start_calc = time.time()
         self.roi_offsets = self.temporal_offset_roi()
@@ -182,6 +201,9 @@ class wind_profiler(object):
         self.print_results()
 
         return self
+
+
+        
 
 
 
@@ -214,6 +236,8 @@ class wind_profiler(object):
 
 
 
+
+
     def temporal_offset_roi(self):
         
         print('\n'+'###########################################################','\n')
@@ -222,11 +246,11 @@ class wind_profiler(object):
         if self.l3s_wind==False:
             num_arrays = 1
             cents_array = numpy.zeros((num_arrays, self.shwfs_centroids.shape[0], self.shwfs_centroids.shape[1]))
-            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap), 2*numpy.sum(self.n_subap)))
+            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap_from_pupilMask), 2*numpy.sum(self.n_subap_from_pupilMask)))
         else:
             num_arrays = 2
             cents_array = numpy.zeros((num_arrays, self.shwfs_centroids.shape[0], self.shwfs_centroids.shape[1]))
-            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap), 2*numpy.sum(self.n_subap)))
+            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap_from_pupilMask), 2*numpy.sum(self.n_subap_from_pupilMask)))
             cents_array[1] = numpy.matmul(numpy.matmul(self.l3s1_matrix, self.shwfs_centroids.T).T, self.l3s1_matrix.T)
         cents_array[0] = self.shwfs_centroids
         
@@ -244,7 +268,6 @@ class wind_profiler(object):
             roi_offsets = numpy.zeros((num_arrays, width, length))
 
 
-
         for n_a in range(num_arrays):
             #loop over how many temporal offsets are being included in the fitting procedure
             for dt in range(1, 1+self.num_offsets):
@@ -254,17 +277,34 @@ class wind_profiler(object):
 
                     #induce positive and negative temporal slope offsets
                     cents_pos_offset, cents_neg_offset = self.temp_offset_cents(cents_array[n_a], 
-                        dt, self.temporal_step, self.n_subap[self.selector[comb, 0]], 
-                        self.n_subap[self.selector[comb, 1]], self.selector[comb])
+                        dt, self.temporal_step, self.n_subap_from_pupilMask[self.selector[comb, 0]], 
+                        self.n_subap_from_pupilMask[self.selector[comb, 1]], self.selector[comb])
 
-                    comb_roi_pos, time_pos = calculate_roi_covariance(cents_pos_offset, self.allMapPos[comb:comb+1], 
-                        (2*self.nx_subap[0])-1, self.n_subap, self.onesMat, self.wfsMat_1, self.wfsMat_2, 
-                        self.selector, self.wind_map_axis, self.wind_mapping_type)
 
-                    comb_roi_neg, time_neg = calculate_roi_covariance(cents_neg_offset, self.allMapPos[comb:comb+1], 
-                        (2*self.nx_subap[0])-1, self.n_subap, self.onesMat, self.wfsMat_1, self.wfsMat_2, 
-                        self.selector, self.wind_map_axis, self.wind_mapping_type) #* self.mult_neg_offset
-                        
+                    #calculate roi directly from centroids or via matrix (for AOF via matrix is the fastest technique)
+                    if self.roi_via_matrix==True:
+                        comb_mat_pos = cross_cov(cents_pos_offset)
+                        comb_map_pos = covMap_fromMatrix(comb_mat_pos, 2, self.nx_subap[:2], self.n_subap_from_pupilMask[:2], 
+                            self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+                        comb_roi_pos = roi_from_map(comb_map_pos, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
+                            self.wind_roi_belowGround, self.wind_roi_envelope)
+
+                        comb_mat_neg = cross_cov(cents_neg_offset)
+                        comb_map_neg = covMap_fromMatrix(comb_mat_neg, 2, self.nx_subap[:2], self.n_subap_from_pupilMask[:2], 
+                            self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+                        comb_roi_neg = roi_from_map(comb_map_neg, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
+                            self.wind_roi_belowGround, self.wind_roi_envelope)
+
+
+                    if self.roi_via_matrix==False:
+                        comb_roi_pos, time_pos = calculate_roi_covariance(cents_pos_offset, 
+                            self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+                            self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
+
+                        comb_roi_neg, time_neg = calculate_roi_covariance(cents_neg_offset, 
+                            self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+                            self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
+
                     comb_roi_neg *= self.mult_neg_offset
 
                     if self.separate_pos_neg_offsets==True:
@@ -274,10 +314,19 @@ class wind_profiler(object):
                         roi_offsets[n_a, comb*roi_width:(comb+1)*roi_width] += comb_roi_neg + comb_roi_pos
 
             if self.include_temp0==True:
-                roi_temp0, time_temp0 = calculate_roi_covariance(cents_array[n_a], self.allMapPos, 
-                    (2*self.nx_subap[0])-1, self.n_subap, self.onesMat, self.wfsMat_1, self.wfsMat_2, 
-                    self.selector, self.wind_map_axis, self.wind_mapping_type)
+                if self.roi_via_matrix==False:
+                    roi_temp0, time_temp0 = calculate_roi_covariance(cents_array[n_a], 
+                        self.gs_pos, self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+                        self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
                 
+                if self.roi_via_matrix==True:
+                    mat_temp0 = cross_cov(cents_array[n_a])
+                    map_temp0 = covMap_fromMatrix(mat_temp0, self.n_wfs, self.nx_subap, self.n_subap_from_pupilMask, 
+                        self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+                    roi_temp0 = roi_from_map(map_temp0, self.gs_pos, self.pupil_mask, self.selector, 
+                        self.wind_roi_belowGround, self.wind_roi_envelope)
+
+
                 if self.separate_pos_neg_offsets==True:
                     roi_offsets[n_a, :, :length] += roi_temp0 * self.mult_neg_offset
                     roi_offsets[n_a, :, length:] += roi_temp0
@@ -291,12 +340,6 @@ class wind_profiler(object):
                     roi_offsets[n_a, :, length:][self.zeroSep_locations] = 0.
                 else:
                     roi_offsets[n_a][self.zeroSep_locations] = 0.
-
-        # pyplot.figure()
-        # pyplot.imshow(matrix_of_offsets[0,0])
-        # pyplot.imshow(roi_offsets[0])
-        # pyplot.colorbar()
-        # d=off
 
         return roi_offsets
 
