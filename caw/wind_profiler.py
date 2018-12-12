@@ -81,6 +81,7 @@ class wind_profiler(object):
         self.shwfs_rot = self.turb_results.shwfs_rot
     
         target_conf = wind_config_file.configDict["OFFSET TARGET ARRAY"]
+        self.input_shwfs_centroids = target_conf["input_shwfs_centroids"]
         self.roi_via_matrix = target_conf["roi_via_matrix"]
         self.zeroSep_cov = target_conf["zeroSep_cov"]
         self.input_frame_count = target_conf["input_frame_count"]
@@ -162,7 +163,10 @@ class wind_profiler(object):
 
 
 
-    def perform_wind_profiling(self, frame_rate, frame_count=False):
+    def perform_wind_profiling(self, frame_rate, frame_count=False, shwfs_cents=False):
+
+        if self.input_shwfs_centroids==True:
+            self.shwfs_centroids = shwfs_cents
 
         if self.input_frame_count==True:
             if frame_count.shape[0]!=self.shwfs_centroids.shape[0]:
@@ -170,7 +174,7 @@ class wind_profiler(object):
             self.shwfs_centroids = self.shwfs_centroids[numpy.argsort(frame_count)]
             frame_count = frame_count[numpy.argsort(frame_count)]
             nearest = numpy.abs(frame_count-self.temporal_step).argmin()
-            self.temporal_step = numpy.where(frame_count==nearest)[0][0]
+            self.temporal_step = frame_count[nearest]
 
         start_calc = time.time()
         self.roi_offsets = self.temporal_offset_roi()

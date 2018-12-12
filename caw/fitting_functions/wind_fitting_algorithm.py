@@ -410,7 +410,7 @@ class fitting_parameters(object):
             print('\n')
             print("Iteration: {}".format(self.iteration))
             print('Method: {}'.format(fit_method))
-            print("Layer Altitudes: {}".format(self.layer_alt_fit))
+            print("Layer Distance: {}".format(self.layer_alt_fit))
             print("L0: {}".format(L0))
             print("r0: {}".format(r0))
             print('Num. Offsets: {}'.format(self.num_offsets))
