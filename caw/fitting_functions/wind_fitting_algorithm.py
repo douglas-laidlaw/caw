@@ -42,7 +42,7 @@ class fitting_parameters(object):
         self.n_subap = self.turb_results.n_subap
         self.n_subap_from_pupilMask = self.turb_results.n_subap_from_pupilMask
         self.nx_subap = self.turb_results.nx_subap
-        self.gs_alt = self.turb_results.gs_alt
+        self.gs_dist = self.turb_results.gs_dist
         self.shwfs_shift = self.turb_results.shwfs_shift
         self.shwfs_rot = self.turb_results.shwfs_rot
         self.subap_diam = self.turb_results.subap_diam
@@ -162,7 +162,7 @@ class fitting_parameters(object):
 
 
         self.generationParams = covariance_roi(self.pupil_mask, self.subap_diam, self.wavelength, 
-            self.tel_diam, self.n_subap_from_pupilMask, self.gs_alt, self.gs_pos, self.n_layer, layer_alt, self.L0, 
+            self.tel_diam, self.n_subap_from_pupilMask, self.gs_dist, self.gs_pos, self.n_layer, layer_alt, self.L0, 
             self.allMapPos, self.xy_separations, self.wind_map_axis, styc_method=self.styc_method, 
             wind_profiling=True, tt_track_present=self.tt_track_present, lgs_track_present=self.lgs_track_present, 
             offset_present=self.offset_present, fit_layer_alt=fit_layer_alt[0], 
@@ -220,7 +220,7 @@ class fitting_parameters(object):
                 delta_ySep_aloft[i] = None
 
         self.generationParams = covariance_roi_l3s(self.pupil_mask, self.subap_diam, self.wavelength, 
-            self.tel_diam, self.n_subap_from_pupilMask, self.gs_alt, self.gs_pos, self.n_layer-1, layer_alt_aloft, 
+            self.tel_diam, self.n_subap_from_pupilMask, self.gs_dist, self.gs_pos, self.n_layer-1, layer_alt_aloft, 
             self.L0[1:], self.allMapPos_acrossMap, self.xy_separations_acrossMap, self.wind_map_axis, 
             self.wind_roi_belowGround, self.wind_roi_envelope, styc_method=self.styc_method, 
             wind_profiling=True, lgs_track_present=self.lgs_track_present, offset_present=self.offset_present, 
@@ -246,7 +246,7 @@ class fitting_parameters(object):
 
         ### Generate wind ROI at altitudes of h>0km ###
         self.generationParams = covariance_roi(self.pupil_mask, self.subap_diam, self.wavelength, 
-            self.tel_diam, self.n_subap_from_pupilMask, self.gs_alt, self.gs_pos, self.n_layer-1, layer_alt_aloft, 
+            self.tel_diam, self.n_subap_from_pupilMask, self.gs_dist, self.gs_pos, self.n_layer-1, layer_alt_aloft, 
             self.L0[1:], self.allMapPos, self.xy_separations, self.wind_map_axis, styc_method=self.styc_method, 
             wind_profiling=True, tt_track_present=False, lgs_track_present=self.lgs_track_present, 
             offset_present=self.offset_present, fit_layer_alt=fit_layer_alt[0], fit_tt_track=False, 
@@ -288,7 +288,7 @@ class fitting_parameters(object):
         # pyplot.imshow(self.roi_offsets[0]-roi_aloft)
 
         self.generationParams = covariance_roi(self.pupil_mask, self.subap_diam, self.wavelength, 
-            self.tel_diam, self.n_subap_from_pupilMask, self.gs_alt, self.gs_pos, 1, layer_alt_ground, self.L0[:1], 
+            self.tel_diam, self.n_subap_from_pupilMask, self.gs_dist, self.gs_pos, 1, layer_alt_ground, self.L0[:1], 
             self.allMapPos, self.xy_separations, self.wind_map_axis, styc_method=self.styc_method, 
             wind_profiling=True, tt_track_present=self.tt_track_present, lgs_track_present=self.lgs_track_present, 
             offset_present=self.offset_present, fit_layer_alt=fit_layer_alt[0], fit_tt_track=False, 

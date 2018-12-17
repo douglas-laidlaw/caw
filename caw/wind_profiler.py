@@ -172,9 +172,10 @@ class wind_profiler(object):
             if frame_count.shape[0]!=self.shwfs_centroids.shape[0]:
                 raise Exception('Input frame count not the same length as SHWFS iterations.')
             self.shwfs_centroids = self.shwfs_centroids[numpy.argsort(frame_count)]
-            frame_count = frame_count[numpy.argsort(frame_count)]
-            nearest = numpy.abs(frame_count-self.temporal_step).argmin()
-            self.temporal_step = frame_count[nearest]
+            self.frame_count = frame_count[numpy.argsort(frame_count)]
+            nearest = numpy.abs(self.frame_count-self.temporal_step).argmin()
+            self.temporal_step = nearest
+            self.offset_step = self.frame_count[nearest]
 
         start_calc = time.time()
         self.roi_offsets = self.temporal_offset_roi()
@@ -367,7 +368,8 @@ class wind_profiler(object):
         Returns:
             ndarray: shwfs centroid measurments with negative temporal offset.
             ndarray: shwfs centroid measurments with positive temporal offset."""
-        
+    
+
         #Induce GS combination negative temporal shift in cents
         temp_offset_wfs1 = cents[:cents.shape[0]-dt*temporal_step, selector[0]*2*wfs1_n_subaps : selector[0]*2*wfs1_n_subaps + 2*wfs1_n_subaps]
         temp_offset_wfs2 = cents[dt*temporal_step:, selector[1]*2*wfs2_n_subaps : selector[1]*2*wfs2_n_subaps + 2*wfs2_n_subaps]
