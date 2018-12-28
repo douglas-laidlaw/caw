@@ -1,11 +1,13 @@
 OFFSET TARGET ARRAY:
+  reduce_SL: False
+  input_shwfs_centroids: False
   roi_via_matrix: True
-  zeroSep_cov: False
+  zeroSep_cov: True
   num_offsets: 1
   input_frame_count: True
-  offset_step: 8
+  offset_step: 10
   include_temp0: False
-  minus_negativeTemp: True
+  minus_negativeTemp: False
   separate_pos_neg_offsets: True
   map_axis: x and y
   mapping_type: mean
@@ -14,7 +16,7 @@ OFFSET TARGET ARRAY:
 
 FITTING ALGORITHM:
   type: l3s
-  print_fitting: True
+  print_fitting: False
   delta_xSep: [0, 0, 0]
   delta_ySep: [0, 0, 0]
   fit_layer_alt: False

@@ -1,5 +1,6 @@
 import numpy
 import itertools
+from math import atan2
 from scipy.misc import comb
 from scipy.optimize import root, minimize
 from matplotlib import pyplot; pyplot.ion()
@@ -7,6 +8,7 @@ from capt.misc_functions.calc_Cn2_r0 import calc_r0
 from capt.misc_functions.mapping_matrix import get_mappingMatrix
 from capt.map_functions.covMap_fromMatrix import covMap_fromMatrix
 from capt.roi_functions.roi_referenceArrays import roi_referenceArrays
+from capt.roi_functions.roi_zeroSep_locations import roi_zeroSep_locations
 from capt.covariance_generation.generate_covariance_roi import covariance_roi
 from capt.covariance_generation.generate_covariance_roi_l3s import covariance_roi_l3s
 
@@ -16,7 +18,25 @@ class fitting_parameters(object):
 
     def __init__(self, turb_results, fit_method, roi_offsets, frame_rate, num_offsets, offset_step, 
                 wind_roi_belowGround, wind_roi_envelope, wind_map_axis, zeroSep_cov, zeroSep_locations, 
-                include_temp0, mult_neg_offset, separate_pos_neg_offsets, print_fitting):
+                include_temp0, mult_neg_offset, separate_pos_neg_offsets, reduce_SL, print_fitting):
+
+        if reduce_SL==True:
+            self.n_wfs = 3
+            self.combs = 3
+            self.selector = numpy.array(([[0,1], [0,2], [1,2]]))
+            self.lgs_track = (turb_results.lgs_track[:3]+turb_results.lgs_track[:3])/2
+            roi_width = (2*wind_roi_envelope) + 1
+            roi_length = turb_results.pupil_mask.shape[0] + wind_roi_belowGround
+            self.zeroSep_locations = roi_zeroSep_locations(3, roi_width, 
+                roi_length, wind_map_axis, wind_roi_belowGround)
+
+        else:
+            self.n_wfs = turb_results.n_wfs
+            self.combs = turb_results.combs
+            self.selector = turb_results.selector
+            self.lgs_track = turb_results.lgs_track
+            self.zeroSep_locations = zeroSep_locations 
+
 
         self.turb_results = turb_results 
         self.fit_method = fit_method 
@@ -27,34 +47,30 @@ class fitting_parameters(object):
         self.wind_roi_envelope = wind_roi_envelope
         self.wind_map_axis = wind_map_axis
         self.zeroSep_cov = zeroSep_cov
-        self.zeroSep_locations = zeroSep_locations 
         self.include_temp0 = include_temp0
         self.mult_neg_offset = mult_neg_offset
         self.separate_pos_neg_offsets = separate_pos_neg_offsets
+        self.reduce_SL = reduce_SL
         self.print_fitting = print_fitting
 
         self.air_mass = self.turb_results.air_mass
-        self.gs_pos = self.turb_results.gs_pos
-        self.n_wfs = self.turb_results.n_wfs
-        self.selector = self.turb_results.selector
-        self.combs = self.turb_results.combs
+        self.gs_pos = self.turb_results.gs_pos[:self.n_wfs]
         self.tel_diam = self.turb_results.tel_diam
-        self.n_subap = self.turb_results.n_subap
-        self.n_subap_from_pupilMask = self.turb_results.n_subap_from_pupilMask
-        self.nx_subap = self.turb_results.nx_subap
-        self.gs_dist = self.turb_results.gs_dist
-        self.shwfs_shift = self.turb_results.shwfs_shift
-        self.shwfs_rot = self.turb_results.shwfs_rot
-        self.subap_diam = self.turb_results.subap_diam
+        self.n_subap = self.turb_results.n_subap[:self.n_wfs]
+        self.n_subap_from_pupilMask = self.turb_results.n_subap_from_pupilMask[:self.n_wfs]
+        self.nx_subap = self.turb_results.nx_subap[:self.n_wfs]
+        self.gs_dist = self.turb_results.gs_dist[:self.n_wfs]
+        self.shwfs_shift = self.turb_results.shwfs_shift[:self.n_wfs]
+        self.shwfs_rot = self.turb_results.shwfs_rot[:self.n_wfs]
+        self.subap_diam = self.turb_results.subap_diam[:self.n_wfs]
         self.pupil_mask = self.turb_results.pupil_mask
-        self.wavelength = self.turb_results.wavelength
+        self.wavelength = self.turb_results.wavelength[:self.n_wfs]
         self.styc_method = self.turb_results.styc_method
         self.tt_track = self.turb_results.tt_track
         self.tt_track_present = self.turb_results.tt_track_present
-        self.lgs_track = self.turb_results.lgs_track
         self.lgs_track_present = self.turb_results.lgs_track_present
-
         self.offset_present = self.turb_results.offset_present
+
 
         #account for air mass
         cn2 = turb_results.Cn2
@@ -279,7 +295,6 @@ class fitting_parameters(object):
                 guessParam_ground = numpy.append(guessParam_ground, delta_ySep_ground[i])
                 delta_ySep_ground[i] = None
 
-
         # pyplot.figure()
         # pyplot.imshow(self.roi_offsets[0])
         # pyplot.figure()
@@ -346,13 +361,12 @@ class fitting_parameters(object):
         self.pos_delta_xSep = delta_xSep.astype('float')
         self.pos_delta_ySep = delta_ySep.astype('float')
         self.windSpeed = numpy.sqrt(self.pos_delta_xSep**2 + self.pos_delta_ySep**2) * (self.frame_rate/self.offset_step)	
-        self.windDirection = 360 - self.xySep_vectorAngle(self.pos_delta_ySep, self.pos_delta_xSep) * 180/numpy.pi
+        self.windDirection = self.xySep_vectorAngle(self.pos_delta_xSep, self.pos_delta_ySep)
 
 
         #generate turbulence profile at dt=0 with fitLayerAlt0 altitudes - if includeTemp0=True
         if self.include_temp0==True:
             if fit_layer_alt[0]==True or self.iteration==0:
-                
                 if fit_method=='Direct Fit':
                     self.roi_temp0 = self.generationParams._make_covariance_roi_(self.layer_alt_fit, 
                         r0, L0, tt_track=self.tt_track, lgs_track=self.lgs_track, shwfs_shift=self.shwfs_shift, shwfs_rot=self.shwfs_rot, 
@@ -369,7 +383,10 @@ class fitting_parameters(object):
             else:
                 self.covMapOffset += self.roi_temp0
 
-        
+        # print(self.roi_temp0)
+        # pyplot.figure()
+        # pyplot.imshow(self.covMapOffset)
+
 
         if self.iteration==0 or fit_deltaXYseps==True:
 
@@ -398,6 +415,11 @@ class fitting_parameters(object):
                     self.covMapOffset[:, self.length:] += pos_roi_wind_fit
                 else:
                     self.covMapOffset += pos_roi_wind_fit + (neg_roi_wind_fit*self.mult_neg_offset)
+
+        # pyplot.figure()
+        # pyplot.imshow(self.covMapOffset)
+        # stop
+
 
         if self.zeroSep_cov==False:
             if self.separate_pos_neg_offsets==True:
@@ -496,19 +518,9 @@ class fitting_parameters(object):
             
         Returns:
             ndarray: direction of displacement"""
-        
-        dx[dx==0] = 1e-20
-        theta = (numpy.pi/2.) - numpy.arctan(dy/dx)
 
-        check = numpy.zeros(dx.shape)
-        check[dx<0] += 1
-        check[dy>=0] += 1
-
-        theta[check==2] = numpy.pi + ((numpy.pi/2.) - numpy.arctan(dy[check==2]/dx[check==2]))
-
-        check *= 0
-        check[dx<0] += 1
-        check[dy<0] += 1
-        theta[check==2] = 3*(numpy.pi)/2. - numpy.arctan(dy[check==2]/dx[check==2])
-        
+        theta = numpy.zeros(dx.shape[0])
+        for i in range(dx.shape[0]):
+            theta[i] = 360 - (atan2(dy[i],dx[i])*180/numpy.pi)
+            theta[i] = theta[i] % 360
         return theta

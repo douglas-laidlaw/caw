@@ -15,7 +15,7 @@ SHWFS:
   wavelength: [500e-9, 500e-9, 500e-9]
   subap_fov: [4.5, 4.5, 4.5]
   pxls_per_subap: [16, 16, 16]
-  offset_present: True
+  offset_present: False
   shift_offset_x: [0., 0., 0.]
   shift_offset_y: [0., 0., 0.]
   rotational_offset: [0., 0., 0.]
@@ -48,7 +48,7 @@ FITTING ALGORITHM:
   styc_method: True
   force_altRange: True
   huge_matrix: False
-  print_fitting: True
+  print_fitting: False
   cn2_noiseFloor: 1e-16
   remove_tt: False
   output_fitted_array: False
@@ -79,7 +79,7 @@ FITTING ALGORITHM:
     fit_2_tt_track: True
     fit_2_lgs_track: False
 
-    fit_3: True
+    fit_3: False
     fit_3_r0: False
     fit_3_L0: False
     fit_3_globalL0: False

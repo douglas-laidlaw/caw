@@ -71,6 +71,7 @@ class wind_profiler(object):
         self.gs_pos = self.turb_results.gs_pos
         self.n_layer = self.turb_results.n_layer
         self.observable_bins = self.turb_results.observable_bins
+        self.offset_present = self.turb_results.offset_present
 
         self.L0 = self.turb_results.L0
         self.tt_track = self.turb_results.tt_track
@@ -83,6 +84,7 @@ class wind_profiler(object):
         target_conf = wind_config_file.configDict["OFFSET TARGET ARRAY"]
         self.input_shwfs_centroids = target_conf["input_shwfs_centroids"]
         self.roi_via_matrix = target_conf["roi_via_matrix"]
+        self.reduce_SL = target_conf["reduce_SL"]
         self.zeroSep_cov = target_conf["zeroSep_cov"]
         self.input_frame_count = target_conf["input_frame_count"]
         self.num_offsets = target_conf["num_offsets"]
@@ -102,7 +104,11 @@ class wind_profiler(object):
         if len(self.delta_xSep)!=self.n_layer:
             raise Exception('Check length of wind parameters with n_layer.')
 
-
+        if self.reduce_SL==True:
+            if self.n_wfs!=4:
+                raise Exception('To reduce the data there must be 4 GSs in a square asterism.')
+            if self.offset_present==True:
+                raise Exception('When reducing square layout optical alignment must be assumed.')
 
         fit_conf = wind_config_file.configDict["FITTING ALGORITHM"]
         self.fitting_type = fit_conf["type"]
@@ -112,7 +118,11 @@ class wind_profiler(object):
 
         self.onesMat, self.wfsMat_1, self.wfsMat_2, self.allMapPos, self.selector, self.xy_separations = roi_referenceArrays(
                 self.pupil_mask, self.gs_pos, self.tel_diam, self.wind_roi_belowGround, self.wind_roi_envelope)
-        
+        if self.reduce_SL==True:
+            # stop
+            self.selector = numpy.array(([[0,1], [0,2], [0,3], [1,2], [1,3], [3,2]]))
+
+
         if self.zeroSep_cov==False:
             roi_width = (2*self.wind_roi_envelope) + 1
             roi_length = self.pupil_mask.shape[0] + self.wind_roi_belowGround
@@ -181,11 +191,14 @@ class wind_profiler(object):
         self.roi_offsets = self.temporal_offset_roi()
         self.time_calc_offsets = time.time() - start_calc
 
+        if self.reduce_SL==True:
+            self.roi_offsets = self.reduce_SL_to_3combs(self.roi_offsets)
+
         # wind profiling configuration
         wind_params = fitting_parameters(self.turb_results, self.fit_method, self.roi_offsets, 
             frame_rate, self.num_offsets, self.offset_step, self.wind_roi_belowGround, 
             self.wind_roi_envelope, self.wind_map_axis, self.zeroSep_cov, self.zeroSep_locations, 
-            self.include_temp0, self.mult_neg_offset, self.separate_pos_neg_offsets, 
+            self.include_temp0, self.mult_neg_offset, self.separate_pos_neg_offsets, self.reduce_SL,
             self.print_fiting)
         
         start_fit = time.time()
@@ -257,10 +270,10 @@ class wind_profiler(object):
             matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap_from_pupilMask), 2*numpy.sum(self.n_subap_from_pupilMask)))
             cents_array[1] = numpy.matmul(numpy.matmul(self.l3s1_matrix, self.shwfs_centroids.T).T, self.l3s1_matrix.T)
         cents_array[0] = self.shwfs_centroids
-        
 
         roi_width = int(2*self.wind_roi_envelope+1)
         width = int((2*self.wind_roi_envelope+1) * self.combs)
+
         if self.wind_map_axis=='x and y':
             length = int(self.wind_roi_belowGround + self.pupil_mask.shape[0])*2
         else:
@@ -271,6 +284,7 @@ class wind_profiler(object):
         else:
             roi_offsets = numpy.zeros((num_arrays, width, length))
 
+        counter = 1
 
         for n_a in range(num_arrays):
             #loop over how many temporal offsets are being included in the fitting procedure
@@ -279,10 +293,15 @@ class wind_profiler(object):
                 
                 for comb in range(self.combs):
 
+                    print('########################### '+str(counter)+'/'+str(num_arrays*self.num_offsets*self.combs)+' ###########################','\n')
+                    counter += 1
+
                     #induce positive and negative temporal slope offsets
-                    cents_pos_offset, cents_neg_offset = self.temp_offset_cents(cents_array[n_a], 
+                    cents_zero_offset, cents_pos_offset, cents_neg_offset = self.temp_offset_cents(cents_array[n_a], 
                         dt, self.temporal_step, self.n_subap_from_pupilMask[self.selector[comb, 0]], 
                         self.n_subap_from_pupilMask[self.selector[comb, 1]], self.selector[comb])
+
+
 
 
                     #calculate roi directly from centroids or via matrix (for AOF via matrix is the fastest technique)
@@ -299,6 +318,17 @@ class wind_profiler(object):
                         comb_roi_neg = roi_from_map(comb_map_neg, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
                             self.wind_roi_belowGround, self.wind_roi_envelope)
 
+                        # if self.include_temp0==True:
+                        #     comb_mat_zero = cross_cov(cents_zero_offset)
+                        #     comb_map_zero = covMap_fromMatrix(comb_mat_zero, 2, self.nx_subap[:2], self.n_subap_from_pupilMask[:2], 
+                        #         self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+                        #     comb_roi_zero = roi_from_map(comb_map_zero, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
+                        #         self.wind_roi_belowGround, self.wind_roi_envelope)
+
+                        #     comb_roi_pos += comb_roi_zero
+                        #     comb_roi_neg += comb_roi_zero
+
+
 
                     if self.roi_via_matrix==False:
                         comb_roi_pos, time_pos = calculate_roi_covariance(cents_pos_offset, 
@@ -309,6 +339,16 @@ class wind_profiler(object):
                             self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
                             self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
 
+                        # if self.include_temp0==True:
+                        #     comb_roi_zero, time_neg = calculate_roi_covariance(cents_zero_offset, 
+                        #         self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+                        #         self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
+
+                        #     comb_roi_pos += comb_roi_zero
+                        #     comb_roi_neg += comb_roi_zero
+
+
+
                     comb_roi_neg *= self.mult_neg_offset
 
                     if self.separate_pos_neg_offsets==True:
@@ -316,6 +356,8 @@ class wind_profiler(object):
                         roi_offsets[n_a, comb*roi_width:(comb+1)*roi_width, length:] += comb_roi_pos
                     else:
                         roi_offsets[n_a, comb*roi_width:(comb+1)*roi_width] += comb_roi_neg + comb_roi_pos
+
+
 
             if self.include_temp0==True:
                 if self.roi_via_matrix==False:
@@ -344,12 +386,57 @@ class wind_profiler(object):
                     roi_offsets[n_a, :, length:][self.zeroSep_locations] = 0.
                 else:
                     roi_offsets[n_a][self.zeroSep_locations] = 0.
-
+        # stop
         return roi_offsets
 
 
 
 
+    def reduce_SL_to_3combs(self, roi_offsets):
+        """Reduce square layout to 3 GS combinations"""
+
+        threeComb_roi_offsets = numpy.zeros((roi_offsets.shape[0], int(roi_offsets.shape[1]/2), roi_offsets.shape[2]))
+        oneComb_width = int(roi_offsets.shape[1]/6)
+        num_arrays = roi_offsets.shape[0]
+        oneComb_length = int(roi_offsets.shape[2]/2)
+        if self.wind_map_axis=='x and y':
+            oneAxis_oneComb_length = int(oneComb_length/2)
+
+
+        for i in range(num_arrays):
+            for c in range(3):
+
+                if c==0:
+                    
+                    roi_comb1 = roi_offsets[i, :oneComb_width]
+                    roi_comb2 = roi_offsets[i, 5*oneComb_width:]
+                    threeComb_roi_offsets[i, :oneComb_width] = (roi_comb1 + roi_comb2)/2.
+
+                    # pyplot.figure()
+                    # pyplot.imshow(roi_comb1)
+                    # pyplot.figure()
+                    # pyplot.imshow(roi_comb2)
+                    # pyplot.figure()
+                    # pyplot.imshow(threeComb_roi_offsets[i])
+
+                if c==1:
+
+                    threeComb_roi_offsets[i, oneComb_width:2*oneComb_width] = roi_offsets[i, oneComb_width:2*oneComb_width]
+
+                if c==2:
+
+                    roi_comb1 = roi_offsets[i, 2*oneComb_width:3*oneComb_width]
+                    roi_comb2 = roi_offsets[i, 3*oneComb_width:4*oneComb_width]
+                    threeComb_roi_offsets[i, 2*oneComb_width:] = (roi_comb1 + roi_comb2)/2.
+
+                    # pyplot.figure()
+                    # pyplot.imshow(roi_comb1)
+                    # pyplot.figure()
+                    # pyplot.imshow(roi_comb2)
+                    # pyplot.figure()
+                    # pyplot.imshow(threeComb_roi_offsets[i])
+
+        return threeComb_roi_offsets
 
 
 
@@ -369,16 +456,26 @@ class wind_profiler(object):
             ndarray: shwfs centroid measurments with negative temporal offset.
             ndarray: shwfs centroid measurments with positive temporal offset."""
     
+        #GS combination with zero temporal offset
+        if self.include_temp0==True:
+            zero_temp_offset_wfs1 = cents[:, selector[0]*2*wfs1_n_subaps : selector[0]*2*wfs1_n_subaps + 2*wfs1_n_subaps]
+            zero_temp_offset_wfs2 = cents[:, selector[1]*2*wfs2_n_subaps : selector[1]*2*wfs2_n_subaps + 2*wfs2_n_subaps]
+            cents_zero_offset = numpy.append(zero_temp_offset_wfs1, zero_temp_offset_wfs2, 1)
+        else:
+            cents_zero_offset = numpy.nan
 
         #Induce GS combination negative temporal shift in cents
         temp_offset_wfs1 = cents[:cents.shape[0]-dt*temporal_step, selector[0]*2*wfs1_n_subaps : selector[0]*2*wfs1_n_subaps + 2*wfs1_n_subaps]
         temp_offset_wfs2 = cents[dt*temporal_step:, selector[1]*2*wfs2_n_subaps : selector[1]*2*wfs2_n_subaps + 2*wfs2_n_subaps]
         cents_neg_offset = numpy.append(temp_offset_wfs1, temp_offset_wfs2, 1)
 
+        # print(selector)
+        # print(selector[0]*2*wfs1_n_subaps, selector[0]*2*wfs1_n_subaps + 2*wfs1_n_subaps)
+        # print(selector[1]*2*wfs2_n_subaps, selector[1]*2*wfs2_n_subaps + 2*wfs2_n_subaps)
         #Induce GS combination positive temporal shift in cents
         temp_offset_wfs1 = cents[dt*temporal_step:, selector[0]*2*wfs1_n_subaps : selector[0]*2*wfs1_n_subaps + 2*wfs1_n_subaps]
         temp_offset_wfs2 = cents[:cents.shape[0]-dt*temporal_step, selector[1]*2*wfs2_n_subaps : selector[1]*2*wfs2_n_subaps + 2*wfs2_n_subaps]
         cents_pos_offset = numpy.append(temp_offset_wfs1, temp_offset_wfs2, 1)
 
-        return cents_pos_offset, cents_neg_offset
+        return cents_zero_offset, cents_pos_offset, cents_neg_offset
 
