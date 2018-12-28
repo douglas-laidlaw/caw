@@ -263,11 +263,9 @@ class wind_profiler(object):
         if self.l3s_wind==False:
             num_arrays = 1
             cents_array = numpy.zeros((num_arrays, self.shwfs_centroids.shape[0], self.shwfs_centroids.shape[1]))
-            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap_from_pupilMask), 2*numpy.sum(self.n_subap_from_pupilMask)))
         else:
             num_arrays = 2
             cents_array = numpy.zeros((num_arrays, self.shwfs_centroids.shape[0], self.shwfs_centroids.shape[1]))
-            matrix_of_offsets = numpy.zeros((num_arrays, 2, 2*numpy.sum(self.n_subap_from_pupilMask), 2*numpy.sum(self.n_subap_from_pupilMask)))
             cents_array[1] = numpy.matmul(numpy.matmul(self.l3s1_matrix, self.shwfs_centroids.T).T, self.l3s1_matrix.T)
         cents_array[0] = self.shwfs_centroids
 
@@ -318,15 +316,15 @@ class wind_profiler(object):
                         comb_roi_neg = roi_from_map(comb_map_neg, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
                             self.wind_roi_belowGround, self.wind_roi_envelope)
 
-                        # if self.include_temp0==True:
-                        #     comb_mat_zero = cross_cov(cents_zero_offset)
-                        #     comb_map_zero = covMap_fromMatrix(comb_mat_zero, 2, self.nx_subap[:2], self.n_subap_from_pupilMask[:2], 
-                        #         self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
-                        #     comb_roi_zero = roi_from_map(comb_map_zero, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
-                        #         self.wind_roi_belowGround, self.wind_roi_envelope)
+                        if self.include_temp0==True:
+                            comb_mat_zero = cross_cov(cents_zero_offset)
+                            comb_map_zero = covMap_fromMatrix(comb_mat_zero, 2, self.nx_subap[:2], self.n_subap_from_pupilMask[:2], 
+                                self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+                            comb_roi_zero = roi_from_map(comb_map_zero, self.gs_pos[self.selector[comb]], self.pupil_mask, self.selector[:1], 
+                                self.wind_roi_belowGround, self.wind_roi_envelope)
 
-                        #     comb_roi_pos += comb_roi_zero
-                        #     comb_roi_neg += comb_roi_zero
+                            comb_roi_pos += comb_roi_zero
+                            comb_roi_neg += comb_roi_zero
 
 
 
@@ -339,13 +337,13 @@ class wind_profiler(object):
                             self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
                             self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
 
-                        # if self.include_temp0==True:
-                        #     comb_roi_zero, time_neg = calculate_roi_covariance(cents_zero_offset, 
-                        #         self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
-                        #         self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
+                        if self.include_temp0==True:
+                            comb_roi_zero, time_neg = calculate_roi_covariance(cents_zero_offset, 
+                                self.gs_pos[self.selector[comb]], self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+                                self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
 
-                        #     comb_roi_pos += comb_roi_zero
-                        #     comb_roi_neg += comb_roi_zero
+                            comb_roi_pos += comb_roi_zero
+                            comb_roi_neg += comb_roi_zero
 
 
 
@@ -359,25 +357,25 @@ class wind_profiler(object):
 
 
 
-            if self.include_temp0==True:
-                if self.roi_via_matrix==False:
-                    roi_temp0, time_temp0 = calculate_roi_covariance(cents_array[n_a], 
-                        self.gs_pos, self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
-                        self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
+            # if self.include_temp0==True:
+            #     if self.roi_via_matrix==False:
+            #         roi_temp0, time_temp0 = calculate_roi_covariance(cents_array[n_a], 
+            #             self.gs_pos, self.pupil_mask, self.tel_diam, self.wind_roi_belowGround, 
+            #             self.wind_roi_envelope, self.wind_map_axis, self.wind_mapping_type)
                 
-                if self.roi_via_matrix==True:
-                    mat_temp0 = cross_cov(cents_array[n_a])
-                    map_temp0 = covMap_fromMatrix(mat_temp0, self.n_wfs, self.nx_subap, self.n_subap_from_pupilMask, 
-                        self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
-                    roi_temp0 = roi_from_map(map_temp0, self.gs_pos, self.pupil_mask, self.selector, 
-                        self.wind_roi_belowGround, self.wind_roi_envelope)
+            #     if self.roi_via_matrix==True:
+            #         mat_temp0 = cross_cov(cents_array[n_a])
+            #         map_temp0 = covMap_fromMatrix(mat_temp0, self.n_wfs, self.nx_subap, self.n_subap_from_pupilMask, 
+            #             self.pupil_mask, self.wind_map_axis, self.mm, self.mmc, self.md)
+            #         roi_temp0 = roi_from_map(map_temp0, self.gs_pos, self.pupil_mask, self.selector, 
+            #             self.wind_roi_belowGround, self.wind_roi_envelope)
 
 
-                if self.separate_pos_neg_offsets==True:
-                    roi_offsets[n_a, :, :length] += roi_temp0 * self.mult_neg_offset
-                    roi_offsets[n_a, :, length:] += roi_temp0
-                else:
-                    roi_offsets[n_a] += roi_temp0
+            #     if self.separate_pos_neg_offsets==True:
+            #         roi_offsets[n_a, :, :length] += roi_temp0 * self.mult_neg_offset
+            #         roi_offsets[n_a, :, length:] += roi_temp0
+            #     else:
+            #         roi_offsets[n_a] += roi_temp0
 
 
             if self.zeroSep_cov==False:
@@ -386,7 +384,8 @@ class wind_profiler(object):
                     roi_offsets[n_a, :, length:][self.zeroSep_locations] = 0.
                 else:
                     roi_offsets[n_a][self.zeroSep_locations] = 0.
-        # stop
+
+        del cents_array
         return roi_offsets
 
 
