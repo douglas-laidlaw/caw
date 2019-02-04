@@ -52,7 +52,7 @@ FITTING ALGORITHM:
   cn2_noiseFloor: 1e-16
   remove_tt: False
   output_fitted_array: False
-  fit_unsensed: True
+  fit_unsensed: False
 
   direct:
     fit_r0: True

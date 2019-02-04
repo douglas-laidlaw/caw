@@ -1,3 +1,4 @@
+import time
 import numpy
 import itertools
 from math import atan2
@@ -38,7 +39,6 @@ class fitting_parameters(object):
             self.zeroSep_locations = zeroSep_locations 
 
 
-        self.turb_results = turb_results 
         self.fit_method = fit_method 
         self.roi_offsets = roi_offsets 
         self.num_offsets = num_offsets 
@@ -53,37 +53,37 @@ class fitting_parameters(object):
         self.reduce_SL = reduce_SL
         self.print_fitting = print_fitting
 
-        self.air_mass = self.turb_results.air_mass
-        self.gs_pos = self.turb_results.gs_pos[:self.n_wfs]
-        self.tel_diam = self.turb_results.tel_diam
-        self.n_subap = self.turb_results.n_subap[:self.n_wfs]
-        self.n_subap_from_pupilMask = self.turb_results.n_subap_from_pupilMask[:self.n_wfs]
-        self.nx_subap = self.turb_results.nx_subap[:self.n_wfs]
-        self.gs_dist = self.turb_results.gs_dist[:self.n_wfs]
-        self.shwfs_shift = self.turb_results.shwfs_shift[:self.n_wfs]
-        self.shwfs_rot = self.turb_results.shwfs_rot[:self.n_wfs]
-        self.subap_diam = self.turb_results.subap_diam[:self.n_wfs]
-        self.pupil_mask = self.turb_results.pupil_mask
-        self.wavelength = self.turb_results.wavelength[:self.n_wfs]
-        self.styc_method = self.turb_results.styc_method
-        self.tt_track = self.turb_results.tt_track
-        self.tt_track_present = self.turb_results.tt_track_present
-        self.lgs_track_present = self.turb_results.lgs_track_present
-        self.offset_present = self.turb_results.offset_present
+        self.air_mass = turb_results.air_mass
+        self.gs_pos = turb_results.gs_pos[:self.n_wfs]
+        self.tel_diam = turb_results.tel_diam
+        self.n_subap = turb_results.n_subap[:self.n_wfs]
+        self.n_subap_from_pupilMask = turb_results.n_subap_from_pupilMask[:self.n_wfs]
+        self.nx_subap = turb_results.nx_subap[:self.n_wfs]
+        self.gs_dist = turb_results.gs_dist[:self.n_wfs]
+        self.shwfs_shift = turb_results.shwfs_shift[:self.n_wfs]
+        self.shwfs_rot = turb_results.shwfs_rot[:self.n_wfs]
+        self.subap_diam = turb_results.subap_diam[:self.n_wfs]
+        self.pupil_mask = turb_results.pupil_mask
+        self.wavelength = turb_results.wavelength[:self.n_wfs]
+        self.styc_method = turb_results.styc_method
+        self.tt_track = turb_results.tt_track
+        self.tt_track_present = turb_results.tt_track_present
+        self.lgs_track_present = turb_results.lgs_track_present
+        self.offset_present = turb_results.offset_present
 
 
         #account for air mass
         cn2 = turb_results.Cn2
         turb_cn2 = cn2.copy()
         self.Cn2 = cn2 * turb_results.air_mass
-        self.Cn2[turb_cn2==self.turb_results.cn2_noiseFloor] = self.turb_results.cn2_noiseFloor  
-        r0 = calc_r0(self.Cn2, self.turb_results.wavelength[0])
+        self.Cn2[turb_cn2==turb_results.cn2_noiseFloor] = turb_results.cn2_noiseFloor  
+        r0 = calc_r0(self.Cn2, turb_results.wavelength[0])
 
-        self.observable_bins = self.turb_results.observable_bins
-        self.delete_index = numpy.where(self.Cn2[:self.observable_bins]==self.turb_results.cn2_noiseFloor)[0]
+        self.observable_bins = turb_results.observable_bins
+        self.delete_index = numpy.where(self.Cn2[:self.observable_bins]==turb_results.cn2_noiseFloor)[0]
         self.r0 = self.reduce_layers(r0, self.delete_index, self.observable_bins)
-        self.L0 = self.reduce_layers(self.turb_results.L0, self.delete_index, self.observable_bins)
-        self.layer_alt = self.reduce_layers(numpy.array(self.turb_results.layer_alt) * self.air_mass, 
+        self.L0 = self.reduce_layers(turb_results.L0, self.delete_index, self.observable_bins)
+        self.layer_alt = self.reduce_layers(numpy.array(turb_results.layer_alt) * self.air_mass, 
             self.delete_index, self.observable_bins)
         
         self.n_layer = self.layer_alt.shape[0]
@@ -354,7 +354,7 @@ class fitting_parameters(object):
                 delta_ySep[i] = guessParam[np]
                 np+=1
 
-
+        # st1 = time.time()
         #reset self.covMapOffset after each iteration
         self.covMapOffset = numpy.zeros(self.roi_offsets[0].shape)
         self.layer_alt_fit = layer_alt.astype('float')
@@ -362,8 +362,9 @@ class fitting_parameters(object):
         self.pos_delta_ySep = delta_ySep.astype('float')
         self.windSpeed = numpy.sqrt(self.pos_delta_xSep**2 + self.pos_delta_ySep**2) * (self.frame_rate/self.offset_step)	
         self.windDirection = self.xySep_vectorAngle(self.pos_delta_xSep, self.pos_delta_ySep)
+        # print('time1: {}'.format(time.time() - st1))
 
-
+        # st2 = time.time()
         #generate turbulence profile at dt=0 with fitLayerAlt0 altitudes - if includeTemp0=True
         if self.include_temp0==True:
             if fit_layer_alt[0]==True or self.iteration==0:
@@ -382,18 +383,19 @@ class fitting_parameters(object):
                 self.covMapOffset[:, self.length:] += self.roi_temp0
             else:
                 self.covMapOffset += self.roi_temp0
-
+        # print('time2: {}'.format(time.time() - st2))
         # print(self.roi_temp0)
         # pyplot.figure()
         # pyplot.imshow(self.covMapOffset)
 
-
+        # st3 = time.time()
         if self.iteration==0 or fit_deltaXYseps==True:
 
             for n in range(self.num_offsets):
                 inter_delta_xSep_posi = (n+1) * self.pos_delta_xSep / self.num_offsets
                 inter_delta_ySep_posi = (n+1) * self.pos_delta_ySep / self.num_offsets
 
+                # st3_1 = time.time()
                 if fit_method=='Direct Fit':
                     pos_roi_wind_fit = self.generationParams._make_covariance_roi_(self.layer_alt_fit, 
                         r0, L0, tt_track=self.tt_track, lgs_track=self.lgs_track, shwfs_shift=self.shwfs_shift, shwfs_rot=self.shwfs_rot, 
@@ -401,6 +403,7 @@ class fitting_parameters(object):
                     neg_roi_wind_fit = self.generationParams._make_covariance_roi_(self.layer_alt_fit, 
                         r0, L0, tt_track=self.tt_track, lgs_track=self.lgs_track, shwfs_shift=self.shwfs_shift, shwfs_rot=self.shwfs_rot, 
                         delta_xSep=-inter_delta_xSep_posi, delta_ySep=-inter_delta_ySep_posi)
+                # print('time3_1: {}'.format(time.time() - st3_1))
 
                 if fit_method=='L3S Fit':
                     pos_roi_wind_fit = self.generationParams._make_covariance_roi_l3s_(self.layer_alt_fit, 
@@ -415,7 +418,8 @@ class fitting_parameters(object):
                     self.covMapOffset[:, self.length:] += pos_roi_wind_fit
                 else:
                     self.covMapOffset += pos_roi_wind_fit + (neg_roi_wind_fit*self.mult_neg_offset)
-
+        # print('time3: {}'.format(time.time() - st3))
+        # stop
         # pyplot.figure()
         # pyplot.imshow(self.covMapOffset)
         # stop

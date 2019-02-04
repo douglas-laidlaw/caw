@@ -19,7 +19,7 @@ FITTING ALGORITHM:
   print_fitting: False
   delta_xSep: [0, 0, 0]
   delta_ySep: [0, 0, 0]
-  fit_layer_alt: False
+  fit_layer_alt: True
   fit_deltaXYseps: True
 
 

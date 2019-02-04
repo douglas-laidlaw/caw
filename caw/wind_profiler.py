@@ -163,9 +163,7 @@ class wind_profiler(object):
             matrix_region_ones = numpy.ones((self.n_subap_from_pupilMask[0], self.n_subap_from_pupilMask[0]))
             self.mm, self.mmc, self.md = get_mappingMatrix(self.pupil_mask, matrix_region_ones)
 
-
-        print('\n'+'###########################################################','\n')
-        print('############ WIND PROFILING PARAMETERS SECURE #############')
+        print('\n'+'############ WIND PROFILING PARAMETERS SECURE #############')
 
 
 
@@ -194,6 +192,12 @@ class wind_profiler(object):
         if self.reduce_SL==True:
             self.roi_offsets = self.reduce_SL_to_3combs(self.roi_offsets)
 
+        del self.l3s1_matrix
+        del self.md
+        del self.mm
+        del self.mmc
+        # stop
+
         # wind profiling configuration
         wind_params = fitting_parameters(self.turb_results, self.fit_method, self.roi_offsets, 
             frame_rate, self.num_offsets, self.offset_step, self.wind_roi_belowGround, 
@@ -202,11 +206,14 @@ class wind_profiler(object):
             self.print_fiting)
         
         start_fit = time.time()
+        print('###########################################################','\n')
+        print('################## FITTING WIND PROFILE ###################','\n')
         self.wind_fit = wind_params.fit_roi_offsets(self.delta_xSep, self.delta_ySep, 
             fit_layer_alt=self.fit_layer_alt, fit_deltaXYseps=self.fit_deltaXYseps)
         self.total_fitting_time = time.time() - start_fit
         
-        self.Cn2 = self.wind_fit.Cn2 / self.turb_results.air_mass
+        self.Cn2 = self.wind_fit.Cn2
+        self.Cn2[self.Cn2!=1e-16] /= self.turb_results.air_mass
         self.r0 = calc_r0(self.Cn2, self.turb_results.wavelength[0])
         self.L0 = self.wind_fit.L0
         self.layer_alt = self.wind_fit.layer_alt / self.turb_results.air_mass
