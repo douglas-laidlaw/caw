@@ -72,7 +72,7 @@ class wind_profiler(object):
         self.n_layer = self.turb_results.n_layer
         self.observable_bins = self.turb_results.observable_bins
         self.offset_present = self.turb_results.offset_present
-
+        self.cn2_noiseFloor = self.turb_results.cn2_noiseFloor
         self.L0 = self.turb_results.L0
         self.tt_track = self.turb_results.tt_track
         self.lgs_track = self.turb_results.lgs_track
@@ -213,7 +213,7 @@ class wind_profiler(object):
         self.total_fitting_time = time.time() - start_fit
         
         self.Cn2 = self.wind_fit.Cn2
-        self.Cn2[self.Cn2!=1e-16] /= self.turb_results.air_mass
+        self.Cn2[self.Cn2!=self.cn2_noiseFloor] /= self.turb_results.air_mass
         self.r0 = calc_r0(self.Cn2, self.turb_results.wavelength[0])
         self.L0 = self.wind_fit.L0
         self.layer_alt = self.wind_fit.layer_alt / self.turb_results.air_mass
@@ -245,6 +245,7 @@ class wind_profiler(object):
         print('SHWFS x Shift (m) : {}'.format(self.shwfs_shift.T[0]))
         print('SHWFS y Shift (m) : {}'.format(self.shwfs_shift.T[1]))
         print('SHWFS Rotation (degrees) : {}'.format(self.shwfs_rot), '\n')
+        print('Offset step: {}'.format(self.offset_step))
         print('Layer Altitudes: {}'.format(self.layer_alt))
         print('Delta xSep: {}'.format(self.pos_delta_xSep))
         print('Delta ySep: {}'.format(self.pos_delta_ySep))
@@ -253,8 +254,8 @@ class wind_profiler(object):
 
         print('\n'+'###########################################################','\n')
         print('##################### TOTAL TIME TAKEN ####################','\n')
-        print('############## CALCULATING OFFSETS : '+"%6.4f" % (self.time_calc_offsets)+' ###############','\n')
-        print('################# FITTING OFFSETS : '+"%6.4f" % (self.total_fitting_time)+' ################', '\n')
+        print('############### CALCULATING OFFSETS : '+"%.2f" % (self.time_calc_offsets)+' ################','\n')
+        print('################## FITTING OFFSETS : '+"%.2f" % (self.total_fitting_time)+' #################', '\n')
         print('###########################################################')
 
 
@@ -298,7 +299,10 @@ class wind_profiler(object):
                 
                 for comb in range(self.combs):
 
-                    print('########################### '+str(counter)+'/'+str(num_arrays*self.num_offsets*self.combs)+' ###########################','\n')
+                    percent_complete = counter/(num_arrays*self.num_offsets*self.combs) 
+                    print('########################### '+"%.2f" % (percent_complete)+' ##########################', '\n')
+
+                    # print('########################### '+str(counter)+'/'+str(num_arrays*self.num_offsets*self.combs)+' ###########################','\n')
                     counter += 1
 
                     #induce positive and negative temporal slope offsets

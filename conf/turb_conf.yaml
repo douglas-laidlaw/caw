@@ -79,7 +79,7 @@ FITTING ALGORITHM:
     fit_2_tt_track: True
     fit_2_lgs_track: False
 
-    fit_3: False
+    fit_3: True
     fit_3_r0: False
     fit_3_L0: False
     fit_3_globalL0: False
