@@ -12,6 +12,7 @@ def get_turb_profile(turb_conf, air_mass, tas, pix_arc, shwfs_centroids, input_m
     turb_results = turb_conf.perform_turbulence_profiling(air_mass, tas, pix_arc, shwfs_centroids)
     return turb_results
 
+
 def get_wind_profile(turb_conf, wind_conf, frame_rate, frame_count, air_mass, tas, pix_arc, shwfs_centroids):
     turb_results = get_turb_profile(turb_conf, air_mass, tas, pix_arc, shwfs_centroids)
     wind_conf = caw.wind_profiler(turb_results, wind_conf)
