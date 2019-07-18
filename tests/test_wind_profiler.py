@@ -31,9 +31,11 @@ if __name__ == '__main__':
     tas = numpy.array([[0., -40.], [0., 0.], [30., 0.]])
     turb_conf = capt.configuration('../conf/turb_conf.yaml')
     wind_conf = caw.configuration('../conf/wind_conf.yaml')
-    results = get_wind_profile(turb_conf, wind_conf, frame_rate, frame_count, air_mass, tas, pix_arc, shwfs_centroids)
+    
+    turb_results = get_turb_profile(turb_conf, air_mass, tas, pix_arc, shwfs_centroids)
+    wind_results = get_wind_profile(turb_conf, wind_conf, frame_rate, frame_count, air_mass, tas, pix_arc, shwfs_centroids)
 
-    pyplot.figure('analytical fit')
-    pyplot.imshow(results.wind_fit.covMapOffset)
-    pyplot.figure('measured')
-    pyplot.imshow(results.roi_offsets[0])
+    # pyplot.figure('analytical fit')
+    # pyplot.imshow(results.wind_fit.covMapOffset)
+    # pyplot.figure('measured')
+    # pyplot.imshow(results.roi_offsets[0])

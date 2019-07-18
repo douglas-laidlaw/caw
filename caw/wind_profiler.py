@@ -37,7 +37,7 @@ class configuration(object):
         
         #raise exception if specified layer parameters do not match.
         if len(delta_xSep)!=len(delta_ySep):
-            raise Exception('Check lengths of wind parameters.')
+            raise Exception('Check lengths of caw parameters.')
 
 
     def loadYaml(self, yaml_file):
